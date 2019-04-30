@@ -165,7 +165,7 @@ def disconnect():
     api.disconnect()
 
 if sys.version_info[0] == 2:
-    reload(sys)
+    #reload(sys)
     sys.setdefaultencoding('utf8')
 
 FUNCTION_LIST_STR = "0 : 使用交互式接口\n"
