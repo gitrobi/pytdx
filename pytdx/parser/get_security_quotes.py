@@ -6,6 +6,7 @@ from collections import OrderedDict
 import struct
 import six
 
+
 class GetSecurityQuotesCmd(BaseParser):
 
     def setParams(self, all_stock):
@@ -29,7 +30,6 @@ class GetSecurityQuotesCmd(BaseParser):
             0,
             stock_len,
         )
-
 
         pkg_header = struct.pack("<HIHHIIHH", *values)
         pkg = bytearray(pkg_header)
@@ -133,6 +133,7 @@ class GetSecurityQuotesCmd(BaseParser):
                 ("open", self._cal_price(price, open_diff)),
                 ("high", self._cal_price(price, high_diff)),
                 ("low", self._cal_price(price, low_diff)),
+                ("servertime", self._format_time('%s' % self._get_reversed_bytes0(reversed_bytes0))),
                 ("reversed_bytes0", reversed_bytes0),
                 ("reversed_bytes1", reversed_bytes1),
                 ("vol", vol),
@@ -173,8 +174,36 @@ class GetSecurityQuotesCmd(BaseParser):
             stocks.append(one_stock)
         return stocks
 
+    # Robi - servertime
+    def _get_reversed_bytes0(self, reversed_bytes0):
+        if len(str(reversed_bytes0)) == 9:
+            return int(reversed_bytes0/10)
+        return reversed_bytes0
+
     def _cal_price(self, base_p, diff):
         return float(base_p + diff)/100
+
+    def _format_time(self, time_stamp):
+        """
+        format time from reversed_bytes0
+        by using method from https://github.com/rainx/pytdx/issues/187
+        """
+        if time_stamp == '0': # Robi for 不存在的股票
+            return ''
+        time = time_stamp[:-6] + ':'
+        if int(time_stamp[-6:-4]) < 60:
+            time += '%s:' % time_stamp[-6:-4]
+            time += '%06.3f' % (
+                int(time_stamp[-4:]) * 60 / 10000.0
+            )
+        else:
+            time += '%02d:' % (
+                int(time_stamp[-6:]) * 60 / 1000000
+            )
+            time += '%06.3f' % (
+                (int(time_stamp[-6:]) * 60 % 1000000) * 60 / 1000000.0
+            )
+        return time
 
 
 if __name__ == '__main__':
@@ -182,4 +211,5 @@ if __name__ == '__main__':
     api = TdxHq_API()
     with api.connect():
         #print(api.to_df(api.get_security_quotes([(0, '102672'), (0, '002672')])))
-        print(api.to_df(api.get_security_quotes([(0, '101612'), (0, '002672')])))
+        print(api.to_df(api.get_security_quotes(
+            [(0, '101612'), (0, '002672')])))
